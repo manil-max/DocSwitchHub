@@ -51,7 +51,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/DocSwitchHub.git
+   git clone https://github.com/manil-max/DocSwitchHub.git
    cd DocSwitchHub
    ```
 
