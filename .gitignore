@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.spec
+
+# Virtual Environment
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Project-specific (dev-only files)
+Agentic Workflows/
+test_hub.py
+test_mock.*
+make_icon.py
+create_shortcut.ps1
+DocSwitch.bat
+*.ico
+
+# Installer output
+installer/Output/

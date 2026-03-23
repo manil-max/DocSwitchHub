@@ -1,0 +1,9 @@
+flask
+pdf2docx
+docx2pdf
+Pillow
+pypdf
+rembg
+onnxruntime
+yt-dlp
+werkzeug
