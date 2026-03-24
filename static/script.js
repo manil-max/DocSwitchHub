@@ -209,12 +209,66 @@ document.addEventListener("DOMContentLoaded", () => {
   fileInputMore.addEventListener("change", () => handleAddFiles(fileInputMore.files));
   clearAllBtn.addEventListener("click", resetState);
 
-  // --- API Action ---
+  // Helper to determine output extension based on tool id
+  function getOutputExtension(toolId, inputFiles) {
+    if (toolId === "pdf_to_word") return ".docx";
+    if (toolId.includes("to_pdf") || toolId.includes("_pdf")) return ".pdf";
+    if (toolId === "remove_bg") return ".png";
+    if (toolId === "split_pdf") return ".zip";
+    if (toolId === "video_downloader") return ".mp4";
+    return "";
+  }
+  
+  function getSuggestedName(toolId, inputFiles) {
+    let base = "DocSwitch_Output";
+    if (inputFiles && inputFiles.length > 0) {
+      if (inputFiles.length === 1) {
+        let name = inputFiles[0].name;
+        base = name.substring(0, name.lastIndexOf('.')) || name;
+        if (toolId === "protect_pdf") base += "_protected";
+        if (toolId === "rotate_pdf") base += "_rotated";
+        if (toolId === "remove_bg") base += "_nobg";
+        if (toolId === "split_pdf") base += "_pages";
+      } else {
+        base = "DocSwitch_Batch";
+        if (toolId === "merge_pdf") base = "Merged_Document";
+      }
+    } else if (toolId === "video_downloader") {
+      base = "Video_Download";
+    }
+    return base + getOutputExtension(toolId, inputFiles);
+  }
+
+  // Helper to fallback download
+  function triggerFallbackDownload(blob, dName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = dName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   convertBtn.addEventListener("click", async () => {
     if (!currentToolId || selectedFiles.length === 0) return;
     if (currentToolArg === "password" && !toolArgInput.value) {
       alert("Please enter a password.");
       return;
+    }
+
+    const sName = getSuggestedName(currentToolId, selectedFiles);
+    let fileHandle = null;
+
+    // Prompt user for save location IMMEDIATELY while user gesture is active
+    if (window.showSaveFilePicker) {
+      try {
+        fileHandle = await window.showSaveFilePicker({ suggestedName: sName });
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User canceled save dialog
+        console.warn("Save picker failed, will fallback.", err);
+      }
     }
 
     showSection(progressSection);
@@ -225,7 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const progInt = setInterval(() => {
       fakeProg = Math.min(fakeProg + Math.random()*15, 85);
       progressFill.style.width = `${fakeProg}%`;
-      if(fakeProg > 40) progressText.textContent = "Processing documents...";
+      if(fakeProg > 40) progressText.textContent = "Processing... (This may take a minute)";
     }, 500);
 
     const fd = new FormData();
@@ -244,46 +298,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       progressFill.style.width = "100%";
-      progressText.textContent = "Done!";
+      progressText.textContent = "Saving file...";
 
       const disp = res.headers.get("Content-Disposition");
-      let dName = "DocSwitch_File";
+      let finalName = sName;
       if (disp) {
         const m = disp.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
-        if (m) dName = decodeURIComponent(m[1]);
+        if (m) finalName = decodeURIComponent(m[1]);
       }
 
       const blob = await res.blob();
       
-      try {
-        // Try to use the modern File System Access API to prompt "Save As"
-        if (window.showSaveFilePicker) {
-          const handle = await window.showSaveFilePicker({
-            suggestedName: dName
-          });
-          const writable = await handle.createWritable();
+      if (fileHandle) {
+        try {
+          const writable = await fileHandle.createWritable();
           await writable.write(blob);
           await writable.close();
-        } else {
-          throw new Error("showSaveFilePicker not supported");
+        } catch (err) {
+          triggerFallbackDownload(blob, finalName);
         }
-      } catch (saveErr) {
-        // Fallback to traditional download if API is not supported or user cancels
-        if (saveErr.name !== 'AbortError') {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = dName;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        } else {
-          // User clicked Cancel on the Save As dialog
-          progressText.textContent = "Saved canceled.";
-          setTimeout(() => resetState(), 1000);
-          return;
-        }
+      } else {
+        triggerFallbackDownload(blob, finalName);
       }
 
       const warns = res.headers.get("X-Warnings");
@@ -303,6 +338,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   convertLinkBtn.addEventListener("click", async () => {
     if (!currentToolId || !linkInput.value.trim()) return;
+
+    const sName = getSuggestedName(currentToolId, null);
+    let fileHandle = null;
+
+    if (window.showSaveFilePicker) {
+      try {
+        fileHandle = await window.showSaveFilePicker({ suggestedName: sName });
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.warn("Save picker failed, will fallback.", err);
+      }
+    }
 
     showSection(progressSection);
     progressFill.style.width = "0%";
@@ -327,41 +374,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       progressFill.style.width = "100%";
-      progressText.textContent = "Done!";
+      progressText.textContent = "Saving file...";
 
       const disp = res.headers.get("Content-Disposition");
-      let dName = "DocSwitch_Download";
+      let finalName = sName;
       if (disp) {
         const m = disp.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
-        if (m) dName = decodeURIComponent(m[1]);
+        if (m) finalName = decodeURIComponent(m[1]);
       }
 
       const blob = await res.blob();
       
-      try {
-        if (window.showSaveFilePicker) {
-          const handle = await window.showSaveFilePicker({ suggestedName: dName });
-          const writable = await handle.createWritable();
+      if (fileHandle) {
+        try {
+          const writable = await fileHandle.createWritable();
           await writable.write(blob);
           await writable.close();
-        } else {
-          throw new Error("showSaveFilePicker not supported");
+        } catch (err) {
+          triggerFallbackDownload(blob, finalName);
         }
-      } catch (saveErr) {
-        if (saveErr.name !== 'AbortError') {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = dName;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        } else {
-          progressText.textContent = "Saved canceled.";
-          setTimeout(() => resetState(), 1000);
-          return;
-        }
+      } else {
+        triggerFallbackDownload(blob, finalName);
       }
 
       setTimeout(() => showSection(successSection), 500);
