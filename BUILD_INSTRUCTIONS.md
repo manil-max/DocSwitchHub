@@ -72,7 +72,7 @@ pyinstaller --noconfirm build.spec
 - `app.py` → `DocSwitch.exe` dönüştürür
 - Tüm Python dependencies'i bundle eder
 - Statik dosyaları (templates, static) dahil eder
-- Sonuç: `dist/DocSwitch/` klasöründe
+- Sonuç: `dist/DocSwitch.exe` dosyasında
 
 ### **Adım 2: Inno Setup Installer**
 ```
@@ -99,8 +99,8 @@ DocSwitchHub_Setup_v1.0.2.exe
 # build.spec'i güncelle (gerekirse)
 pyinstaller --noconfirm build.spec
 
-# dist/DocSwitch klasöründen installer/AppFiles'a kopyala
-xcopy "dist\DocSwitch" "installer\AppFiles\" /E /I /Y
+# dist/DocSwitch.exe dosyasını installer/AppFiles'a kopyala
+copy /Y "dist\DocSwitch.exe" "installer\AppFiles\DocSwitch.exe"
 ```
 
 ### **Inno Setup ile Derle:**

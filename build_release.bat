@@ -14,15 +14,22 @@ echo.
 
 REM Adım 1: PyInstaller kontrol et
 echo [1/3] Checking PyInstaller...
-pip show pyinstaller >nul 2>&1
+set PYTHON_CMD=python
+if exist "venv\Scripts\python.exe" set PYTHON_CMD=venv\Scripts\python.exe
+set BUILD_WORK=%TEMP%\DocSwitchBuild
+set BUILD_DIST=%TEMP%\DocSwitchDist
+
+if exist "%BUILD_WORK%" rmdir /s /q "%BUILD_WORK%"
+if exist "%BUILD_DIST%" rmdir /s /q "%BUILD_DIST%"
+%PYTHON_CMD% -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo Installing PyInstaller...
-    pip install pyinstaller
+    %PYTHON_CMD% -m pip install pyinstaller
 )
 
 REM Adım 2: app.exe oluştur
 echo [2/3] Building app.exe with PyInstaller...
-pyinstaller --noconfirm build.spec
+%PYTHON_CMD% -m PyInstaller --noconfirm --clean --workpath "%BUILD_WORK%" --distpath "%BUILD_DIST%" build.spec
 if errorlevel 1 (
     echo ERROR: PyInstaller build failed!
     pause
@@ -31,9 +38,21 @@ if errorlevel 1 (
 
 REM Adım 3: dist klasöründen installer klasörüne kopyala
 echo [3/3] Preparing installer...
+if not exist "dist\" mkdir "dist\"
+copy /Y "%BUILD_DIST%\DocSwitch.exe" "dist\DocSwitch.exe"
+if errorlevel 1 (
+    echo ERROR: Could not copy DocSwitch.exe to dist!
+    pause
+    exit /b 1
+)
 if exist "installer\AppFiles\" rmdir /s /q "installer\AppFiles\"
 mkdir "installer\AppFiles\"
-xcopy "dist\DocSwitch" "installer\AppFiles\" /E /I /Y
+copy /Y "dist\DocSwitch.exe" "installer\AppFiles\DocSwitch.exe"
+if errorlevel 1 (
+    echo ERROR: DocSwitch.exe was not found in dist!
+    pause
+    exit /b 1
+)
 
 REM Inno Setup ile derle
 echo.

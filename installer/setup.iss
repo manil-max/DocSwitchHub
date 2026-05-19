@@ -23,7 +23,7 @@ LicenseFile=..\LICENSE
 OutputDir=Output
 OutputBaseFilename=DocSwitchHub_Setup_v{#MyAppVersion}
 SetupIconFile=..\docswitch_hub.ico
-UninstallDisplayIcon={app}\docswitch_hub.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern
@@ -60,10 +60,10 @@ Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 ; Source: "LibreOfficePortable.exe"; DestDir: "{tmp}"; Flags: external
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\docswitch_hub.ico"; Comment: "Document converter and media tool"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Comment: "Document converter and media tool"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\docswitch_hub.ico"; Tasks: desktopicon; Comment: "Document converter and media tool"
-Name: "{autoquicklaunch}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\docswitch_hub.ico"; Tasks: quicklaunch; Comment: "Document converter and media tool"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Comment: "Document converter and media tool"
+Name: "{autoquicklaunch}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: quicklaunch; Comment: "Document converter and media tool"
 
 [Run]
 ; LibreOffice download and install if task selected

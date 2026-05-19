@@ -30,6 +30,14 @@ make_icon.py
 create_shortcut.ps1
 DocSwitch.bat
 *.ico
+!icon.ico
+!docswitch_hub.ico
+!static/favicon.ico
+!static/app-icon.png
 
 # Installer output
+installer/AppFiles/
 installer/Output/
+
+# Release build config
+!build.spec

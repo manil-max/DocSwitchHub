@@ -8,8 +8,9 @@ import subprocess
 import webbrowser
 import sys
 import time
+import socket
 
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pypdf import PdfWriter
@@ -129,6 +130,14 @@ def schedule_cleanup(path: str, delay: float = 60.0):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
 
 @app.route("/api/<tool_id>", methods=["POST"])
 def process_tool(tool_id):
@@ -381,20 +390,55 @@ def process_tool(tool_id):
     if errors: resp.headers["X-Warnings"] = " | ".join(errors)
     return resp
 
+def is_port_available(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex(("127.0.0.1", port)) != 0
+
+
+def find_available_port(start_port: int = 5000) -> int:
+    for port in range(start_port, start_port + 50):
+        if is_port_available(port):
+            return port
+    raise RuntimeError("No available local port found for DocSwitch.")
+
+
+def open_app_window(url: str) -> None:
+    time.sleep(2)
+
+    edge_commands = [
+        ["msedge", f"--app={url}"],
+        [
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            f"--app={url}",
+        ],
+        [
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            f"--app={url}",
+        ],
+    ]
+
+    for command in edge_commands:
+        try:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except OSError:
+            continue
+
+    webbrowser.open(url)
+
+
 if __name__ == "__main__":
     # Detect if running as PyInstaller executable
     is_frozen = getattr(sys, 'frozen', False)
-    
-    def open_browser():
-        # Wait for Flask to start
-        time.sleep(2)
-        webbrowser.open('http://127.0.0.1:5000')
-    
+    port = find_available_port(5000)
+    url = f"http://127.0.0.1:{port}"
+
+    threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
+
     if is_frozen:
-        # Running as compiled executable - open browser and suppress debug output
-        threading.Thread(target=open_browser, daemon=True).start()
-        app.run(debug=False, port=5000)
+        # Running as compiled executable - open in desktop-app style and suppress debug output
+        app.run(debug=False, port=port)
     else:
         # Running from source - development mode
-        threading.Thread(target=open_browser, daemon=True).start()
-        app.run(debug=True, port=5000)
+        app.run(debug=True, port=port)
