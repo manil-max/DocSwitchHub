@@ -5,6 +5,9 @@ import zipfile
 import io
 import threading
 import subprocess
+import webbrowser
+import sys
+import time
 
 from flask import Flask, render_template, request, send_file, jsonify
 from werkzeug.utils import secure_filename
@@ -379,4 +382,19 @@ def process_tool(tool_id):
     return resp
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Detect if running as PyInstaller executable
+    is_frozen = getattr(sys, 'frozen', False)
+    
+    def open_browser():
+        # Wait for Flask to start
+        time.sleep(2)
+        webbrowser.open('http://127.0.0.1:5000')
+    
+    if is_frozen:
+        # Running as compiled executable - open browser and suppress debug output
+        threading.Thread(target=open_browser, daemon=True).start()
+        app.run(debug=False, port=5000)
+    else:
+        # Running from source - development mode
+        threading.Thread(target=open_browser, daemon=True).start()
+        app.run(debug=True, port=5000)

@@ -38,21 +38,41 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start - Two Options
 
-### Prerequisites
-- **Python 3.10+** installed
-- **LibreOffice** installed (required for Office document conversions)
+### **Option 1: One-Click Installer (Recommended for Most Users)** ⭐
+
+**No Python knowledge needed. Just download and run!**
+
+1. **Download** the latest installer from [Releases](https://github.com/manil-max/DocSwitchHub/releases)
+2. **Double-click** `DocSwitchHub_Setup_v*.exe`
+3. **Click "Install"** → Done! ✅
+4. Find **DocSwitch Hub** in:
+   - **Start Menu** (search "DocSwitch")
+   - **Desktop shortcut** (if you selected it)
+   - **Windows Search** (just type "DocSwitch")
+
+**One requirement:** LibreOffice (installer will prompt you to download it)
+
+---
+
+### **Option 2: Manual Installation (For Developers)**
+
+**Want to modify the code or run from source?**
+
+#### Prerequisites
+- **Python 3.10+** installed ([Download](https://www.python.org/downloads/))
+- **LibreOffice** installed for document conversions
   ```bash
   winget install TheDocumentFoundation.LibreOffice
   ```
 
-### Installation
+#### Installation Steps
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/manil-max/DocSwitchHub.git
-   cd DocSwitchHub
+   cd "file converter"
    ```
 
 2. **Create a virtual environment**
@@ -76,9 +96,24 @@
 
 ---
 
-## 🖥️ Desktop App Mode (Optional)
+## 🏗️ Building the Installer (For Developers)
 
-Want it to feel like a native desktop application? Double-click `RunDocSwitch.vbs` — it silently starts the server and opens the app in Microsoft Edge's App Mode (frameless window).
+Want to compile your own installer? See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)
+
+```bash
+build_release.bat
+# Creates: installer\Output\DocSwitchHub_Setup_v*.exe
+```
+
+---
+
+## 🖥️ Desktop App Mode
+
+When you run DocSwitch Hub from the installer, it automatically:
+- ✅ Opens in Microsoft Edge's App Mode (frameless window)
+- ✅ Appears in your Taskbar as a native app
+- ✅ Runs silently in the background
+- ✅ Shows up in Windows Search
 
 ---
 

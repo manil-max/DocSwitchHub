@@ -7,3 +7,4 @@ rembg
 onnxruntime
 yt-dlp
 werkzeug
+pyinstaller
