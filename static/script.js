@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const convertBtn = document.getElementById("convertBtn");
   const actionBtnLabel = document.getElementById("actionBtnLabel");
   const toolArgInput = document.getElementById("toolArgInput");
+  const splitOptions = document.getElementById("splitOptions");
+  const pageRangesInput = document.getElementById("pageRangesInput");
 
   const progressSection = document.getElementById("progressSection");
   const progressFill = document.getElementById("progressFill");
@@ -131,6 +133,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fileInputMore.value = "";
     linkInput.value = "";
     if (toolArgInput) toolArgInput.value = "";
+    if (splitOptions) splitOptions.classList.add("hidden");
+    if (pageRangesInput) {
+      pageRangesInput.value = "";
+      pageRangesInput.classList.add("hidden");
+    }
+    document.querySelectorAll('input[name="splitMode"]').forEach(input => {
+      input.checked = input.value === "pages";
+    });
     
     if (currentInputType === "link") {
       showSection(linkzone);
@@ -154,6 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     showSection(fileList);
+    if (splitOptions) splitOptions.classList.toggle("hidden", currentToolId !== "split_pdf");
     fileCount.textContent = selectedFiles.length;
     fileListItems.innerHTML = "";
 
@@ -209,12 +220,25 @@ document.addEventListener("DOMContentLoaded", () => {
   fileInputMore.addEventListener("change", () => handleAddFiles(fileInputMore.files));
   clearAllBtn.addEventListener("click", resetState);
 
+  function getSelectedSplitMode() {
+    return document.querySelector('input[name="splitMode"]:checked')?.value || "pages";
+  }
+
+  document.querySelectorAll('input[name="splitMode"]').forEach(input => {
+    input.addEventListener("change", () => {
+      if (!pageRangesInput) return;
+      pageRangesInput.classList.toggle("hidden", getSelectedSplitMode() !== "ranges");
+    });
+  });
+
   // Helper to determine output extension based on tool id
   function getOutputExtension(toolId, inputFiles) {
+    if (toolId === "merge_pdf") return ".pdf";
+    if (inputFiles && inputFiles.length > 1) return ".zip";
+    if (toolId === "split_pdf") return getSelectedSplitMode() === "ranges" ? ".pdf" : ".zip";
     if (toolId === "pdf_to_word") return ".docx";
     if (toolId.includes("to_pdf") || toolId.includes("_pdf")) return ".pdf";
     if (toolId === "remove_bg") return ".png";
-    if (toolId === "split_pdf") return ".zip";
     if (toolId === "video_downloader") return ".mp4";
     return "";
   }
@@ -228,9 +252,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (toolId === "protect_pdf") base += "_protected";
         if (toolId === "rotate_pdf") base += "_rotated";
         if (toolId === "remove_bg") base += "_nobg";
-        if (toolId === "split_pdf") base += "_pages";
+        if (toolId === "split_pdf") base += getSelectedSplitMode() === "ranges" ? "_ranges" : "_pages";
       } else {
-        base = "DocSwitch_Batch";
+        base = `DocSwitch_${toolId}_batch`;
         if (toolId === "merge_pdf") base = "Merged_Document";
       }
     } else if (toolId === "video_downloader") {
@@ -255,6 +279,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentToolId || selectedFiles.length === 0) return;
     if (currentToolArg === "password" && !toolArgInput.value) {
       alert("Please enter a password.");
+      return;
+    }
+    if (currentToolId === "split_pdf" && getSelectedSplitMode() === "ranges" && !pageRangesInput.value.trim()) {
+      alert("Please enter page ranges, for example 10-24, 55-76, 88.");
       return;
     }
 
@@ -286,6 +314,10 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedFiles.forEach(f => fd.append("files", f));
     if (currentToolArg) {
       fd.append("arg", toolArgInput.value);
+    }
+    if (currentToolId === "split_pdf") {
+      fd.append("split_mode", getSelectedSplitMode());
+      fd.append("page_ranges", pageRangesInput.value.trim());
     }
 
     try {

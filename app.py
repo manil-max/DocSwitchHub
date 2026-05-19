@@ -13,7 +13,7 @@ import socket
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from PIL import Image
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
 
 # ---------------------------------------------------------------------------
 # Conversion Helpers
@@ -80,6 +80,39 @@ def convert_image_to_pdf(input_path: str, output_path: str) -> None:
     if image.mode in ("RGBA", "P"):
         image = image.convert("RGB")
     image.save(output_path, "PDF", resolution=100.0)
+
+def parse_page_ranges(ranges_text: str, page_count: int):
+    if not ranges_text.strip():
+        raise ValueError("Please enter at least one page or page range.")
+
+    pages = []
+    for raw_part in ranges_text.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+
+        if "-" in part:
+            bounds = [p.strip() for p in part.split("-", 1)]
+            if len(bounds) != 2 or not bounds[0].isdigit() or not bounds[1].isdigit():
+                raise ValueError(f"Invalid range '{part}'. Use examples like 10-24, 55-76, 88.")
+            start, end = int(bounds[0]), int(bounds[1])
+        else:
+            if not part.isdigit():
+                raise ValueError(f"Invalid page '{part}'.")
+            start = end = int(part)
+
+        if start < 1 or end < 1:
+            raise ValueError("Page numbers must start at 1.")
+        if start > end:
+            raise ValueError(f"Range '{part}' is reversed.")
+        if end > page_count:
+            raise ValueError(f"Range '{part}' is outside this PDF's {page_count} pages.")
+
+        pages.extend(range(start - 1, end))
+
+    if not pages:
+        raise ValueError("Please enter at least one valid page.")
+    return pages
 
 # ---------------------------------------------------------------------------
 # Flask App setup
@@ -193,6 +226,8 @@ def process_tool(tool_id):
     # ---------------------------------------------------------
     files = request.files.getlist("files")
     arg = request.form.get("arg", "")
+    split_mode = request.form.get("split_mode", "pages")
+    page_ranges = request.form.get("page_ranges", "")
     
     if not files or all(f.filename == "" for f in files):
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -228,7 +263,6 @@ def process_tool(tool_id):
     # ACTION: SPLIT
     # ---------------------------------------------------------
     elif tool["type"] == "split":
-        from pypdf import PdfReader
         for file in files:
             if file.filename == "": continue
             filename = secure_filename(file.filename)
@@ -238,14 +272,24 @@ def process_tool(tool_id):
             base_name = os.path.splitext(filename)[0]
             try:
                 reader = PdfReader(input_path)
-                for i, page in enumerate(reader.pages):
+                if split_mode == "ranges":
                     writer = PdfWriter()
-                    writer.add_page(page)
-                    out_name = f"{base_name}_page_{i+1}.pdf"
+                    for page_index in parse_page_ranges(page_ranges, len(reader.pages)):
+                        writer.add_page(reader.pages[page_index])
+                    out_name = f"{base_name}_ranges.pdf"
                     out_path = os.path.join(tmp_dir, out_name)
                     with open(out_path, "wb") as f:
                         writer.write(f)
                     converted_files.append((out_name, out_path))
+                else:
+                    for i, page in enumerate(reader.pages):
+                        writer = PdfWriter()
+                        writer.add_page(page)
+                        out_name = f"{base_name}_page_{i+1}.pdf"
+                        out_path = os.path.join(tmp_dir, out_name)
+                        with open(out_path, "wb") as f:
+                            writer.write(f)
+                        converted_files.append((out_name, out_path))
             except Exception as e:
                 errors.append(f"Split failed for '{filename}': {str(e)}")
 
@@ -253,7 +297,6 @@ def process_tool(tool_id):
     # ACTION: PROTECT
     # ---------------------------------------------------------
     elif tool["type"] == "protect":
-        from pypdf import PdfReader
         if not arg:
              shutil.rmtree(tmp_dir, ignore_errors=True)
              return jsonify({"error": "Password required for protection."}), 400
@@ -284,7 +327,6 @@ def process_tool(tool_id):
     # ACTION: ROTATE
     # ---------------------------------------------------------
     elif tool["type"] == "rotate":
-        from pypdf import PdfReader
         for file in files:
             if file.filename == "": continue
             filename = secure_filename(file.filename)
@@ -386,7 +428,14 @@ def process_tool(tool_id):
             zf.write(path, arcname=name)
     zip_buffer.seek(0)
     
-    resp = send_file(zip_buffer, mimetype="application/zip", as_attachment=True, download_name="DocSwitch_Converted.zip")
+    if len(files) == 1 and tool["type"] == "split" and split_mode != "ranges":
+        zip_name = f"{os.path.splitext(secure_filename(files[0].filename))[0]}_pages.zip"
+    elif len(files) > 1:
+        zip_name = f"DocSwitch_{tool_id}_batch.zip"
+    else:
+        zip_name = "DocSwitch_Converted.zip"
+
+    resp = send_file(zip_buffer, mimetype="application/zip", as_attachment=True, download_name=zip_name)
     if errors: resp.headers["X-Warnings"] = " | ".join(errors)
     return resp
 

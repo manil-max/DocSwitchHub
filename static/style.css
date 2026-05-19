@@ -227,6 +227,53 @@ body {
 .file-item__remove:hover { opacity: 1; }
 .file-list__actions { display: flex; justify-content: flex-end; gap: 1rem; }
 
+.split-options {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin: 0 0 var(--space-md);
+  padding: 0.75rem;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+}
+
+.split-options__modes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.split-options__mode {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.split-options__input {
+  width: min(100%, 260px);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+@media (max-width: 760px) {
+  .split-options,
+  .file-list__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* ── States (Progress, Success, Error) ────────────────────────── */
 .progress-section, .success-section, .error-section {
   background: var(--clr-surface); border-radius: var(--radius); padding: 4rem 2rem; text-align: center; box-shadow: var(--shadow);

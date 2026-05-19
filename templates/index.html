@@ -161,6 +161,20 @@
             <!-- Populated by JS -->
           </div>
 
+          <div id="splitOptions" class="split-options hidden">
+            <div class="split-options__modes" role="group" aria-label="Split mode">
+              <label class="split-options__mode">
+                <input type="radio" name="splitMode" value="pages" checked />
+                <span>Split every page</span>
+              </label>
+              <label class="split-options__mode">
+                <input type="radio" name="splitMode" value="ranges" />
+                <span>Extract ranges</span>
+              </label>
+            </div>
+            <input type="text" id="pageRangesInput" class="split-options__input hidden" placeholder="10-24, 55-76, 88" />
+          </div>
+
           <div class="file-list__actions" style="align-items: center;">
             <input type="text" id="toolArgInput" class="hidden" placeholder="Enter password..." style="padding:0.75rem; border:1px solid #d1d5db; border-radius:8px; width:200px;" />
             <label for="fileInputMore" class="btn btn--outline" id="addMoreBtn">+ Add More Files</label>
