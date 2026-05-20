@@ -14,6 +14,12 @@ echo.
 REM Try to find Python
 echo [0/3] Locating Python...
 
+REM Method 0: Check virtual environment first
+if exist "%~dp0venv\Scripts\python.exe" (
+    set PYTHON_PATH="%~dp0venv\Scripts\python.exe"
+    goto :found_python
+)
+
 REM Method 1: Windows Registry
 for /f "tokens=2*" %%A in ('reg query "HKLM\SOFTWARE\Python\PythonCore" /s 2^>nul ^| findstr InstallPath') do (
     set PYTHON_PATH=%%B\python.exe
