@@ -635,17 +635,19 @@ def is_port_available(port: int) -> bool:
         return sock.connect_ex(("127.0.0.1", port)) != 0
 
 
-def wait_for_server(url: str, timeout: float = 15.0) -> bool:
-    """Block until the local Flask server responds, or timeout."""
-    import urllib.request
+def wait_for_server(host: str, port: int, timeout: float = 15.0) -> bool:
+    """Block until the local TCP port is accepting connections, or timeout.
+
+    Uses a raw socket connect instead of an HTTP request so the Flask
+    access log stays clean (no spurious 'GET /' entries on every launch).
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(url, timeout=0.5) as resp:
-                if resp.status < 500:
-                    return True
-        except Exception:
-            time.sleep(0.2)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(0.3)
+            if sock.connect_ex((host, port)) == 0:
+                return True
+        time.sleep(0.1)
     return False
 
 
@@ -663,9 +665,9 @@ def find_edge_executable() -> str:
     return found or ""
 
 
-def open_app_window(url: str) -> None:
+def open_app_window(url: str, host: str, port: int) -> None:
     """Wait for the server, then open exactly one Edge --app window (or fall back)."""
-    if not wait_for_server(url):
+    if not wait_for_server(host, port):
         # Server never came up; opening the browser will only show an error.
         return
 
@@ -687,25 +689,43 @@ def open_app_window(url: str) -> None:
     webbrowser.open(url)
 
 
+def _print_port_in_use_message() -> None:
+    print(
+        f"[DocSwitch] Port {DEFAULT_PORT} is already in use. "
+        "Another instance is probably still running - close it (or its "
+        "Edge window) and try again.",
+        file=sys.stderr,
+    )
+
+
 if __name__ == "__main__":
     is_frozen = getattr(sys, "frozen", False)
+    host = "127.0.0.1"
+    url = f"http://{host}:{DEFAULT_PORT}"
 
     # Use a single, predictable port so re-launching can't create a second
-    # parallel instance. If something is already on it, exit early with a
-    # helpful message instead of opening a second window on a different port.
+    # parallel instance. The pre-check gives a friendly message in the common
+    # case; the try/except below covers the race where another process binds
+    # the port between our check and Flask's bind() call.
     if not is_port_available(DEFAULT_PORT):
-        print(
-            f"[DocSwitch] Port {DEFAULT_PORT} is already in use. "
-            "Another instance is probably still running — close it (or its "
-            "Edge window) and try again.",
-            file=sys.stderr,
-        )
+        _print_port_in_use_message()
         sys.exit(1)
 
-    url = f"http://127.0.0.1:{DEFAULT_PORT}"
-    threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
+    threading.Thread(
+        target=open_app_window, args=(url, host, DEFAULT_PORT), daemon=True
+    ).start()
 
     # debug=False keeps everything in a single process (no Werkzeug reloader),
     # which matters because the reloader would otherwise spawn a child that
     # also tries to open an Edge window.
-    app.run(debug=False, port=DEFAULT_PORT, use_reloader=False)
+    try:
+        app.run(debug=False, host=host, port=DEFAULT_PORT, use_reloader=False)
+    except OSError as e:
+        # WinError 10048 = WSAEADDRINUSE; errno 98 on Linux. Treat any "address
+        # already in use" failure as a friendly exit, not a stack trace.
+        win_in_use = getattr(e, "winerror", None) == 10048
+        posix_in_use = e.errno in (48, 98)  # EADDRINUSE on macOS / Linux
+        if win_in_use or posix_in_use or "Address already in use" in str(e):
+            _print_port_in_use_message()
+            sys.exit(1)
+        raise
