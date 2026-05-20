@@ -162,14 +162,15 @@
           </div>
 
           <div id="splitOptions" class="split-options hidden">
+            <div class="split-options__title">Choose split method</div>
             <div class="split-options__modes" role="group" aria-label="Split mode">
               <label class="split-options__mode">
                 <input type="radio" name="splitMode" value="pages" checked />
-                <span>Split every page</span>
+                <span>Every page to ZIP</span>
               </label>
               <label class="split-options__mode">
                 <input type="radio" name="splitMode" value="ranges" />
-                <span>Extract ranges</span>
+                <span>Selected ranges to PDF</span>
               </label>
             </div>
             <input type="text" id="pageRangesInput" class="split-options__input hidden" placeholder="10-24, 55-76, 88" />

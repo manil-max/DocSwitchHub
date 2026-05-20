@@ -77,6 +77,9 @@ Possible later version:
 - Kept single-file conversion names based on the uploaded file, for example `book.pdf` -> `book.docx`.
 - Added a PDF split mode selector with `Split every page` and `Extract ranges`.
 - Added backend page-range parsing for inputs like `10-24, 55-76, 88`.
+- Fixed PDF split output typing so `Split every page` always downloads a `.zip`, even when the source PDF has only one page.
+- Made the split mode selector more visible and explicit: `Every page to ZIP` or `Selected ranges to PDF`.
+- Added file type hints to the Windows save dialog so zip/pdf/docx outputs are less likely to be saved with the wrong extension.
 
 ## Verification Notes
 

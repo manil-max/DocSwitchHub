@@ -414,8 +414,11 @@ def process_tool(tool_id):
 
     schedule_cleanup(tmp_dir)
 
-    # Return single file
-    if len(converted_files) == 1:
+    split_pages_as_zip = tool["type"] == "split" and split_mode != "ranges"
+
+    # Return single file. Split-every-page always returns a zip, even for a
+    # one-page PDF, so the saved file type stays predictable.
+    if len(converted_files) == 1 and not split_pages_as_zip:
         name, path = converted_files[0]
         resp = send_file(path, as_attachment=True, download_name=name)
         if errors: resp.headers["X-Warnings"] = " | ".join(errors)
@@ -428,7 +431,7 @@ def process_tool(tool_id):
             zf.write(path, arcname=name)
     zip_buffer.seek(0)
     
-    if len(files) == 1 and tool["type"] == "split" and split_mode != "ranges":
+    if len(files) == 1 and split_pages_as_zip:
         zip_name = f"{os.path.splitext(secure_filename(files[0].filename))[0]}_pages.zip"
     elif len(files) > 1:
         zip_name = f"DocSwitch_{tool_id}_batch.zip"

@@ -263,6 +263,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return base + getOutputExtension(toolId, inputFiles);
   }
 
+  function getSavePickerOptions(suggestedName) {
+    const ext = "." + suggestedName.split(".").pop().toLowerCase();
+    const typeMap = {
+      ".zip": { description: "ZIP archive", accept: { "application/zip": [".zip"] } },
+      ".pdf": { description: "PDF document", accept: { "application/pdf": [".pdf"] } },
+      ".docx": { description: "Word document", accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] } },
+      ".png": { description: "PNG image", accept: { "image/png": [".png"] } },
+      ".mp4": { description: "MP4 video", accept: { "video/mp4": [".mp4"] } }
+    };
+    const type = typeMap[ext];
+    return type ? { suggestedName, types: [type] } : { suggestedName };
+  }
+
   // Helper to fallback download
   function triggerFallbackDownload(blob, dName) {
     const url = URL.createObjectURL(blob);
@@ -292,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Prompt user for save location IMMEDIATELY while user gesture is active
     if (window.showSaveFilePicker) {
       try {
-        fileHandle = await window.showSaveFilePicker({ suggestedName: sName });
+        fileHandle = await window.showSaveFilePicker(getSavePickerOptions(sName));
       } catch (err) {
         if (err.name === 'AbortError') return; // User canceled save dialog
         console.warn("Save picker failed, will fallback.", err);
@@ -376,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (window.showSaveFilePicker) {
       try {
-        fileHandle = await window.showSaveFilePicker({ suggestedName: sName });
+        fileHandle = await window.showSaveFilePicker(getSavePickerOptions(sName));
       } catch (err) {
         if (err.name === 'AbortError') return;
         console.warn("Save picker failed, will fallback.", err);
