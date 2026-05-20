@@ -1,6 +1,5 @@
 import os
 import fitz  # PyMuPDF
-from security_auditor import SecurityAuditor
 
 def load_pdf(file_path):
     """Loads a PDF file and returns the fitz Document object."""

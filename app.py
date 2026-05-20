@@ -664,16 +664,15 @@ def open_app_window(url: str) -> None:
 
 
 if __name__ == "__main__":
-    # Detect if running as PyInstaller executable
     is_frozen = getattr(sys, 'frozen', False)
     port = find_available_port(5000)
     url = f"http://127.0.0.1:{port}"
 
-    threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
-
     if is_frozen:
-        # Running as compiled executable - open in desktop-app style and suppress debug output
+        threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
         app.run(debug=False, port=port)
     else:
-        # Running from source - development mode
+        # Flask reloader spawns parent + child — open browser only in the child
+        if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+            threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
         app.run(debug=True, port=port)
