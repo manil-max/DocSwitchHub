@@ -14,6 +14,8 @@ from flask import Flask, render_template, request, send_file, jsonify, send_from
 from werkzeug.utils import secure_filename
 from PIL import Image
 from pypdf import PdfReader, PdfWriter
+from scanner import load_pdf, extract_text_with_metadata, reconstruct_text
+from security_auditor import SecurityAuditor
 
 # ---------------------------------------------------------------------------
 # Conversion Helpers
@@ -216,6 +218,9 @@ TOOLS = {
     },
     "video_downloader": {
         "type": "download_link"
+    },
+    "prompt_auditor": {
+        "exts": [".pdf"], "type": "audit"
     }
 }
 
@@ -250,6 +255,63 @@ def process_tool(tool_id):
     # ---------------------------------------------------------
     # ACTION: DOWNLOAD LINK (yt-dlp)
     # ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # ACTION: AUDIT (Document Prompt Auditor)
+    # ---------------------------------------------------------
+    if tool["type"] == "audit":
+        files = request.files.getlist("files")
+        file = files[0] if files else None
+        if not file or file.filename == "":
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return jsonify({"error": "No file uploaded."}), 400
+
+        filename = secure_filename(file.filename)
+        input_path = os.path.join(tmp_dir, filename)
+        file.save(input_path)
+
+        try:
+            doc = load_pdf(input_path)
+            metadata = {k: str(v) for k, v in doc.metadata.items() if v}
+            reconstructed = reconstruct_text(doc)
+            spans = extract_text_with_metadata(doc)
+
+            auditor = SecurityAuditor()
+            for span in spans:
+                auditor.scan_visuals(span, span['page'])
+                auditor.scan_unicode(span['text'], span['page'])
+                auditor.scan_base64(span['text'], span['page'])
+
+            warnings = auditor.warnings
+            severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+            for w in warnings:
+                sev = w.get("severity", "LOW")
+                if sev in severity_counts:
+                    severity_counts[sev] += 1
+
+            score = 100
+            score -= severity_counts["CRITICAL"] * 30
+            score -= severity_counts["HIGH"] * 15
+            score -= severity_counts["MEDIUM"] * 10
+            score -= severity_counts["LOW"] * 5
+            score = max(0, score)
+
+            total_pages = len(doc)
+            doc.close()
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+            return jsonify({
+                "filename": filename,
+                "metadata": metadata,
+                "reconstructed_text": reconstructed,
+                "warnings": warnings,
+                "severity_counts": severity_counts,
+                "safety_score": score,
+                "total_pages": total_pages
+            })
+        except Exception as e:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return jsonify({"error": f"Audit failed: {str(e)}"}), 500
+
     if tool["type"] == "download_link":
         link = request.form.get("link", "").strip()
         if not link:

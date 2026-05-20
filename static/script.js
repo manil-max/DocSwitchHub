@@ -56,12 +56,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const historySection = document.getElementById("historySection");
   const historyList = document.getElementById("historyList");
 
+  // Audit Results elements
+  const auditResults = document.getElementById("auditResults");
+  const auditDocName = document.getElementById("auditDocName");
+  const auditGaugeCircle = document.getElementById("auditGaugeCircle");
+  const auditGaugeValue = document.getElementById("auditGaugeValue");
+  const auditGaugeLabel = document.getElementById("auditGaugeLabel");
+  const auditCountCritical = document.getElementById("auditCountCritical");
+  const auditCountHigh = document.getElementById("auditCountHigh");
+  const auditCountMedium = document.getElementById("auditCountMedium");
+  const auditCountLow = document.getElementById("auditCountLow");
+  const auditMetaPages = document.getElementById("auditMetaPages");
+  const auditMetaAuthor = document.getElementById("auditMetaAuthor");
+  const auditMetaCreator = document.getElementById("auditMetaCreator");
+  const auditMetaProducer = document.getElementById("auditMetaProducer");
+  const auditWarningCount = document.getElementById("auditWarningCount");
+  const auditAccordion = document.getElementById("auditAccordion");
+  const auditCleanMsg = document.getElementById("auditCleanMsg");
+  const auditCharCount = document.getElementById("auditCharCount");
+  const auditTextPre = document.getElementById("auditTextPre");
+  const auditTabThreats = document.getElementById("auditTabThreats");
+  const auditTabText = document.getElementById("auditTabText");
+  const auditPanelThreats = document.getElementById("auditPanelThreats");
+  const auditPanelText = document.getElementById("auditPanelText");
+  const auditCopyBtn = document.getElementById("auditCopyBtn");
+  const auditDownloadBtn = document.getElementById("auditDownloadBtn");
+  const auditStartOver = document.getElementById("auditStartOver");
+
   // ─── State ─────────────────────────────────────────────────
   let currentToolId = null;
   let acceptedExts = "";
   let currentToolArg = null;
   let currentInputType = "file";
   let selectedFiles = [];
+  let auditScannedText = "";
+  let auditScannedFilename = "";
 
   // ─── Theme Toggle ──────────────────────────────────────────
   function getPreferredTheme() {
@@ -161,7 +190,8 @@ document.addEventListener("DOMContentLoaded", () => {
       rotate_pdf: "Rotate PDF",
       remove_bg: "Remove BG",
       image_resize: "Image Resize",
-      video_downloader: "Video Download"
+      video_downloader: "Video Download",
+      prompt_auditor: "Prompt Audit"
     };
 
     history.slice(0, 8).forEach(item => {
@@ -235,7 +265,8 @@ document.addEventListener("DOMContentLoaded", () => {
       protect_pdf: "Protect PDF",
       rotate_pdf: "Rotate PDF",
       remove_bg: "Remove Background",
-      image_resize: "Resize Image"
+      image_resize: "Resize Image",
+      prompt_auditor: "Scan Document"
     };
     actionBtnLabel.textContent = btnLabels[toolId] || "Convert";
 
@@ -261,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ─── File Handling ────────────────────────────────────────
   function showSection(sec) {
-    [dropzone, linkzone, fileList, progressSection, successSection, errorSection].forEach(s => s.classList.add("hidden"));
+    [dropzone, linkzone, fileList, progressSection, successSection, errorSection, auditResults].forEach(s => s.classList.add("hidden"));
     if (sec) sec.classList.remove("hidden");
   }
 
@@ -476,6 +507,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // ─── Convert Action ──────────────────────────────────────
   convertBtn.addEventListener("click", async () => {
     if (!currentToolId || selectedFiles.length === 0) return;
+
+    // Audit tool uses a different flow (JSON response, not file download)
+    if (currentToolId === "prompt_auditor") {
+      runAuditScan();
+      return;
+    }
+
     if (currentToolArg === "password" && !toolArgInput.value) {
       showToast("Please enter a password.", "warning");
       return;
@@ -604,6 +642,199 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast(err.message, "error", 5000);
     }
   });
+
+  // ─── Audit Convert Flow ──────────────────────────────────
+  function runAuditScan() {
+    if (!currentToolId || selectedFiles.length === 0) return;
+
+    showSection(progressSection);
+    progressFill.style.width = "0%";
+    progressText.textContent = "Analyzing document structures...";
+
+    let fakeProg = 0;
+    const progInt = setInterval(() => {
+      fakeProg = Math.min(fakeProg + Math.random() * 10, 85);
+      progressFill.style.width = `${fakeProg}%`;
+      if (fakeProg > 30) progressText.textContent = "Running security auditors (Unicode & Base64)...";
+      if (fakeProg > 60) progressText.textContent = "Compiling security report...";
+    }, 400);
+
+    const fd = new FormData();
+    selectedFiles.forEach(f => fd.append("files", f));
+
+    fetch(`/api/${currentToolId}`, { method: "POST", body: fd })
+      .then(async res => {
+        clearInterval(progInt);
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || "Audit failed.");
+        }
+        progressFill.style.width = "100%";
+        progressText.textContent = "Report ready!";
+        return res.json();
+      })
+      .then(data => {
+        setTimeout(() => {
+          renderAuditResults(data);
+          showSection(auditResults);
+          addToHistory(currentToolId, 1, data.filename);
+          showToast(data.safety_score >= 100 ? "Document is 100% clean!" : "Security scan complete — review findings.", data.safety_score >= 100 ? "success" : "warning");
+        }, 500);
+      })
+      .catch(err => {
+        clearInterval(progInt);
+        errorText.textContent = err.message;
+        showSection(errorSection);
+        showToast(err.message, "error", 5000);
+      });
+  }
+
+  // ─── Render Audit Results ────────────────────────────────
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function renderAuditResults(data) {
+    auditScannedText = data.reconstructed_text;
+    auditScannedFilename = data.filename;
+
+    // Header
+    auditDocName.textContent = data.filename;
+
+    // Gauge
+    const score = data.safety_score;
+    auditGaugeValue.textContent = `${score}%`;
+    const circumference = 2 * Math.PI * 42; // ~263.89
+    const offset = circumference * (1 - score / 100);
+    auditGaugeCircle.style.strokeDasharray = `${circumference}`;
+    auditGaugeCircle.style.strokeDashoffset = `${offset}`;
+
+    // Color based on score
+    let gaugeColor = "#10b981"; // green
+    let statusText = "SECURE";
+    if (score < 50) {
+      gaugeColor = "#ef4444";
+      statusText = "DANGEROUS";
+    } else if (score < 100) {
+      gaugeColor = "#f59e0b";
+      statusText = "RISK DETECTED";
+    }
+    auditGaugeCircle.style.stroke = gaugeColor;
+    auditGaugeLabel.textContent = statusText;
+    auditGaugeLabel.style.color = gaugeColor;
+    auditGaugeValue.style.color = gaugeColor;
+
+    // Severity counts
+    auditCountCritical.textContent = data.severity_counts.CRITICAL;
+    auditCountHigh.textContent = data.severity_counts.HIGH;
+    auditCountMedium.textContent = data.severity_counts.MEDIUM;
+    auditCountLow.textContent = data.severity_counts.LOW;
+
+    // Metadata
+    auditMetaPages.textContent = data.total_pages;
+    auditMetaAuthor.textContent = data.metadata.Author || "\u2014";
+    auditMetaCreator.textContent = data.metadata.Creator || "\u2014";
+    auditMetaProducer.textContent = data.metadata.Producer || "\u2014";
+
+    // Warnings
+    auditWarningCount.textContent = data.warnings.length;
+    auditAccordion.innerHTML = "";
+
+    if (data.warnings.length === 0) {
+      auditCleanMsg.classList.remove("hidden");
+      auditAccordion.classList.add("hidden");
+    } else {
+      auditCleanMsg.classList.add("hidden");
+      auditAccordion.classList.remove("hidden");
+
+      const priority = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      const sorted = [...data.warnings].sort((a, b) => priority[a.severity] - priority[b.severity]);
+
+      sorted.forEach(w => {
+        let ctx = escapeHtml(w.context);
+        // Highlight special tokens
+        ctx = ctx.replace(/\[ZWSP\]/g, '<span class="audit-token audit-token--zwsp">[ZWSP]</span>');
+        ctx = ctx.replace(/\[ZWNJ\]/g, '<span class="audit-token audit-token--zwnj">[ZWNJ]</span>');
+        ctx = ctx.replace(/\[ZWJ\]/g, '<span class="audit-token audit-token--zwj">[ZWJ]</span>');
+        ctx = ctx.replace(/\[BOM\]/g, '<span class="audit-token audit-token--bom">[BOM]</span>');
+        ctx = ctx.replace(/\[LRM\]/g, '<span class="audit-token audit-token--lrm">[LRM]</span>');
+        ctx = ctx.replace(/\[RLM\]/g, '<span class="audit-token audit-token--rlm">[RLM]</span>');
+
+        const item = document.createElement("div");
+        item.className = `audit-accordion-item audit-accordion--${w.severity.toLowerCase()}`;
+        item.innerHTML = `
+          <div class="audit-accordion__header">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex:1;min-width:0;">
+              <span class="audit-badge audit-badge--${w.severity.toLowerCase()}">${w.severity}</span>
+              <span class="audit-accordion__rule">${w.rule}</span>
+            </div>
+            <span class="audit-accordion__page">Page ${w.page}</span>
+            <svg class="audit-accordion__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="audit-accordion__body">
+            <p class="audit-accordion__msg">${w.message}</p>
+            <div class="audit-accordion__ctx-label">Detected Context</div>
+            <div class="audit-accordion__ctx">${ctx}</div>
+          </div>
+        `;
+
+        const header = item.querySelector(".audit-accordion__header");
+        header.addEventListener("click", () => {
+          const isOpen = item.classList.contains("open");
+          auditAccordion.querySelectorAll(".audit-accordion-item").forEach(o => o.classList.remove("open"));
+          if (!isOpen) item.classList.add("open");
+        });
+
+        auditAccordion.appendChild(item);
+      });
+    }
+
+    // Extracted text
+    auditCharCount.textContent = auditScannedText.length;
+    auditTextPre.textContent = auditScannedText;
+
+    // Default tab
+    switchAuditTab("threats");
+  }
+
+  // ─── Audit Tab Switching ─────────────────────────────────
+  function switchAuditTab(tab) {
+    auditTabThreats.classList.toggle("active", tab === "threats");
+    auditTabText.classList.toggle("active", tab === "text");
+    auditPanelThreats.classList.toggle("active", tab === "threats");
+    auditPanelText.classList.toggle("active", tab === "text");
+  }
+  auditTabThreats.addEventListener("click", () => switchAuditTab("threats"));
+  auditTabText.addEventListener("click", () => switchAuditTab("text"));
+
+  // ─── Audit Utilities ────────────────────────────────────
+  auditCopyBtn.addEventListener("click", () => {
+    if (!auditScannedText) return;
+    navigator.clipboard.writeText(auditScannedText).then(() => {
+      showToast("Text copied to clipboard!", "success", 2000);
+    }).catch(() => showToast("Copy failed.", "error"));
+  });
+
+  auditDownloadBtn.addEventListener("click", () => {
+    if (!auditScannedText) return;
+    const blob = new Blob([auditScannedText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${auditScannedFilename.replace(/\.pdf$/i, "")}_extracted.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Text file download started.", "success", 2000);
+  });
+
+  auditStartOver.addEventListener("click", resetState);
 
   // ─── Link Download ───────────────────────────────────────
   convertLinkBtn.addEventListener("click", async () => {

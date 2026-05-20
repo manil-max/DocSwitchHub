@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="/static/app-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -60,6 +60,10 @@
         <li class="sidebar__item" data-filter="downloads">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Downloads
+        </li>
+        <li class="sidebar__item" data-filter="security">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security
         </li>
       </ul>
     </aside>
@@ -142,6 +146,15 @@
             <div class="tool-card__icon" style="background: linear-gradient(135deg, #e11d48, #fb7185);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
             <h3 class="tool-card__title">Video Downloader</h3>
             <p class="tool-card__desc">Paste a link to download videos from any site. No ads, high quality.</p>
+          </div>
+
+          <!-- Security Category -->
+          <div class="tool-card" data-category="security" data-tool="prompt_auditor" data-ext=".pdf">
+            <div class="tool-card__icon" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3 class="tool-card__title">Prompt Auditor</h3>
+            <p class="tool-card__desc">Scan PDF documents for hidden prompt injections, invisible Unicode traps, and Base64 payloads before feeding to LLMs.</p>
           </div>
         </div>
 
@@ -298,6 +311,116 @@
           <h3 class="error-title">Oops!</h3>
           <p class="error-text" id="errorText">Something went wrong.</p>
           <button class="btn btn--primary" id="retryBtn">Try Again</button>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- AUDIT RESULTS VIEW                                 -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <div id="auditResults" class="audit-results hidden">
+          <div class="audit-header">
+            <h2 class="audit-header__title">Security Audit Report</h2>
+            <div class="audit-header__doc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+              <span id="auditDocName">document.pdf</span>
+            </div>
+          </div>
+
+          <div class="audit-grid">
+            <!-- Left Column -->
+            <div class="audit-grid__left">
+              <!-- Safety Score Gauge -->
+              <div class="audit-card">
+                <h3 class="audit-card__title">Document Safety Score</h3>
+                <div class="audit-gauge-container">
+                  <svg class="audit-gauge" viewBox="0 0 100 100">
+                    <circle class="audit-gauge__bg" cx="50" cy="50" r="42" />
+                    <circle class="audit-gauge__fill" cx="50" cy="50" r="42" id="auditGaugeCircle" />
+                  </svg>
+                  <div class="audit-gauge__overlay">
+                    <span class="audit-gauge__value" id="auditGaugeValue">100%</span>
+                    <span class="audit-gauge__label" id="auditGaugeLabel">SECURE</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Severity Grid -->
+              <div class="audit-card">
+                <h3 class="audit-card__title">Diagnostic Findings</h3>
+                <div class="audit-severity-grid">
+                  <div class="audit-sev-card audit-sev--critical">
+                    <span class="audit-sev-card__count" id="auditCountCritical">0</span>
+                    <span class="audit-sev-card__label">Critical</span>
+                  </div>
+                  <div class="audit-sev-card audit-sev--high">
+                    <span class="audit-sev-card__count" id="auditCountHigh">0</span>
+                    <span class="audit-sev-card__label">High Risk</span>
+                  </div>
+                  <div class="audit-sev-card audit-sev--medium">
+                    <span class="audit-sev-card__count" id="auditCountMedium">0</span>
+                    <span class="audit-sev-card__label">Medium</span>
+                  </div>
+                  <div class="audit-sev-card audit-sev--low">
+                    <span class="audit-sev-card__count" id="auditCountLow">0</span>
+                    <span class="audit-sev-card__label">Low Risk</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metadata -->
+              <div class="audit-card">
+                <h3 class="audit-card__title">PDF Metadata</h3>
+                <ul class="audit-meta-list">
+                  <li><span class="audit-meta__key">Pages</span><span class="audit-meta__val" id="auditMetaPages">—</span></li>
+                  <li><span class="audit-meta__key">Author</span><span class="audit-meta__val" id="auditMetaAuthor">—</span></li>
+                  <li><span class="audit-meta__key">Creator</span><span class="audit-meta__val" id="auditMetaCreator">—</span></li>
+                  <li><span class="audit-meta__key">Producer</span><span class="audit-meta__val" id="auditMetaProducer">—</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="audit-grid__right">
+              <!-- Tabs -->
+              <div class="audit-tabs">
+                <button class="audit-tab active" id="auditTabThreats">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Threat Analysis (<span id="auditWarningCount">0</span>)
+                </button>
+                <button class="audit-tab" id="auditTabText">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  Extracted Text
+                </button>
+              </div>
+
+              <!-- Threats Panel -->
+              <div class="audit-panel active" id="auditPanelThreats">
+                <div id="auditAccordion"></div>
+                <div class="audit-clean hidden" id="auditCleanMsg">
+                  <div class="audit-clean__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 11 13 15 9"/></svg>
+                  </div>
+                  <h3>This Document is 100% Clean!</h3>
+                  <p>No zero-width Unicode characters, hidden Base64 blocks, or invisible visual traps were found. Safe to pass to your LLM.</p>
+                </div>
+              </div>
+
+              <!-- Extracted Text Panel -->
+              <div class="audit-panel" id="auditPanelText">
+                <div class="audit-text-header">
+                  <span><strong id="auditCharCount">0</strong> characters extracted</span>
+                  <div class="audit-text-actions">
+                    <button class="btn btn--outline" id="auditCopyBtn" style="padding:0.5rem 0.8rem; font-size:0.82rem;">📋 Copy</button>
+                    <button class="btn btn--outline" id="auditDownloadBtn" style="padding:0.5rem 0.8rem; font-size:0.82rem;">⬇️ Download</button>
+                  </div>
+                </div>
+                <pre class="audit-text-preview" id="auditTextPre"></pre>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:center; margin-top:2rem;">
+            <button class="btn btn--primary" id="auditStartOver">Scan Another Document</button>
+          </div>
         </div>
       </section>
     </main>

@@ -7,4 +7,5 @@ rembg
 onnxruntime
 yt-dlp
 werkzeug
+PyMuPDF
 pyinstaller
