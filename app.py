@@ -625,54 +625,87 @@ def process_tool(tool_id):
     if errors: resp.headers["X-Warnings"] = " | ".join(errors)
     return resp
 
+DEFAULT_PORT = 5000
+
+
 def is_port_available(port: int) -> bool:
+    """Return True if no one is listening on the given local TCP port."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.5)
         return sock.connect_ex(("127.0.0.1", port)) != 0
 
 
-def find_available_port(start_port: int = 5000) -> int:
-    for port in range(start_port, start_port + 50):
-        if is_port_available(port):
-            return port
-    raise RuntimeError("No available local port found for DocSwitch.")
+def wait_for_server(url: str, timeout: float = 15.0) -> bool:
+    """Block until the local Flask server responds, or timeout."""
+    import urllib.request
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=0.5) as resp:
+                if resp.status < 500:
+                    return True
+        except Exception:
+            time.sleep(0.2)
+    return False
+
+
+def find_edge_executable() -> str:
+    """Locate msedge.exe; return absolute path or 'msedge' if discoverable via PATH."""
+    candidate_paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ]
+    for path in candidate_paths:
+        if os.path.exists(path):
+            return path
+    # Fall back to PATH lookup (shutil.which avoids shell expansion surprises)
+    found = shutil.which("msedge")
+    return found or ""
 
 
 def open_app_window(url: str) -> None:
-    time.sleep(2)
+    """Wait for the server, then open exactly one Edge --app window (or fall back)."""
+    if not wait_for_server(url):
+        # Server never came up; opening the browser will only show an error.
+        return
 
-    edge_commands = [
-        ["msedge", f"--app={url}"],
-        [
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            f"--app={url}",
-        ],
-        [
-            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-            f"--app={url}",
-        ],
-    ]
-
-    for command in edge_commands:
+    edge_path = find_edge_executable()
+    if edge_path:
+        # --new-window forces Edge to spawn a fresh standalone window even if
+        # an Edge instance is already running, preventing the "two windows"
+        # symptom seen when --app reuses an existing process.
         try:
-            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                [edge_path, "--new-window", f"--app={url}"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             return
         except OSError:
-            continue
+            pass
 
     webbrowser.open(url)
 
 
 if __name__ == "__main__":
-    is_frozen = getattr(sys, 'frozen', False)
-    port = find_available_port(5000)
-    url = f"http://127.0.0.1:{port}"
+    is_frozen = getattr(sys, "frozen", False)
 
-    if is_frozen:
-        threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
-        app.run(debug=False, port=port)
-    else:
-        # Flask reloader spawns parent + child — open browser only in the child
-        if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-            threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
-        app.run(debug=True, port=port)
+    # Use a single, predictable port so re-launching can't create a second
+    # parallel instance. If something is already on it, exit early with a
+    # helpful message instead of opening a second window on a different port.
+    if not is_port_available(DEFAULT_PORT):
+        print(
+            f"[DocSwitch] Port {DEFAULT_PORT} is already in use. "
+            "Another instance is probably still running — close it (or its "
+            "Edge window) and try again.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    url = f"http://127.0.0.1:{DEFAULT_PORT}"
+    threading.Thread(target=open_app_window, args=(url,), daemon=True).start()
+
+    # debug=False keeps everything in a single process (no Werkzeug reloader),
+    # which matters because the reloader would otherwise spawn a child that
+    # also tries to open an Edge window.
+    app.run(debug=False, port=DEFAULT_PORT, use_reloader=False)
