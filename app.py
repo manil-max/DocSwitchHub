@@ -81,6 +81,38 @@ def convert_image_to_pdf(input_path: str, output_path: str) -> None:
         image = image.convert("RGB")
     image.save(output_path, "PDF", resolution=100.0)
 
+def compress_pdf(input_path: str, output_path: str) -> None:
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+    for page in reader.pages:
+        page.compress_content_streams()
+        writer.add_page(page)
+    # Remove metadata to save space
+    writer.add_metadata({})
+    with open(output_path, "wb") as f:
+        writer.write(f)
+
+def resize_image(input_path: str, output_path: str, mode: str = "percentage",
+                 percent: int = 50, width: int = 0, height: int = 0) -> None:
+    img = Image.open(input_path)
+    if mode == "percentage":
+        new_w = int(img.width * percent / 100)
+        new_h = int(img.height * percent / 100)
+    else:
+        new_w = width or img.width
+        new_h = height or img.height
+    new_w = max(1, new_w)
+    new_h = max(1, new_h)
+    resized = img.resize((new_w, new_h), Image.LANCZOS)
+    # Save with appropriate format
+    ext = os.path.splitext(output_path)[1].lower()
+    if ext in (".jpg", ".jpeg"):
+        if resized.mode in ("RGBA", "P"):
+            resized = resized.convert("RGB")
+        resized.save(output_path, "JPEG", quality=85, optimize=True)
+    else:
+        resized.save(output_path, optimize=True)
+
 def parse_page_ranges(ranges_text: str, page_count: int):
     if not ranges_text.strip():
         raise ValueError("Please enter at least one page or page range.")
@@ -149,6 +181,12 @@ TOOLS = {
     },
     "remove_bg": {
         "exts": [".jpg", ".jpeg", ".png", ".webp"], "out_ext": ".png", "type": "remove_bg"
+    },
+    "compress_pdf": {
+        "exts": [".pdf"], "out_ext": ".pdf", "fn": compress_pdf, "type": "compress"
+    },
+    "image_resize": {
+        "exts": [".jpg", ".jpeg", ".png", ".webp"], "type": "image_resize"
     },
     "video_downloader": {
         "type": "download_link"
@@ -379,6 +417,59 @@ def process_tool(tool_id):
                 converted_files.append((out_name, out_path))
             except Exception as e:
                 errors.append(f"Background removal failed for '{filename}': {str(e)}")
+
+    # ---------------------------------------------------------
+    # ACTION: COMPRESS PDF
+    # ---------------------------------------------------------
+    elif tool["type"] == "compress":
+        for file in files:
+            if file.filename == "": continue
+            filename = secure_filename(file.filename)
+            input_path = os.path.join(tmp_dir, filename)
+            file.save(input_path)
+
+            base_name = os.path.splitext(filename)[0]
+            out_name = f"{base_name}_compressed.pdf"
+            out_path = os.path.join(tmp_dir, out_name)
+
+            try:
+                compress_pdf(input_path, out_path)
+                converted_files.append((out_name, out_path))
+            except Exception as e:
+                errors.append(f"Compress failed for '{filename}': {str(e)}")
+
+    # ---------------------------------------------------------
+    # ACTION: IMAGE RESIZE
+    # ---------------------------------------------------------
+    elif tool["type"] == "image_resize":
+        resize_mode = request.form.get("resize_mode", "percentage")
+        resize_pct = int(request.form.get("resize_percent", "50") or 50)
+        resize_w = int(request.form.get("resize_width", "0") or 0)
+        resize_h = int(request.form.get("resize_height", "0") or 0)
+
+        for file in files:
+            if file.filename == "": continue
+            filename = secure_filename(file.filename)
+            _, ext = os.path.splitext(filename)
+            ext_lower = ext.lower()
+
+            if ext_lower not in tool["exts"]:
+                errors.append(f"Skipped '{filename}' (unsupported format).")
+                continue
+
+            input_path = os.path.join(tmp_dir, filename)
+            file.save(input_path)
+
+            base_name = os.path.splitext(filename)[0]
+            out_name = f"{base_name}_resized{ext_lower}"
+            out_path = os.path.join(tmp_dir, out_name)
+
+            try:
+                resize_image(input_path, out_path, mode=resize_mode,
+                             percent=resize_pct, width=resize_w, height=resize_h)
+                converted_files.append((out_name, out_path))
+            except Exception as e:
+                errors.append(f"Resize failed for '{filename}': {str(e)}")
 
     # ---------------------------------------------------------
     # ACTION: CONVERT (Default)

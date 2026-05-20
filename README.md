@@ -23,6 +23,7 @@
 | **Image → PDF** | Convert JPG/PNG images to PDF |
 | **Merge PDF** | Combine multiple PDFs into one |
 | **Split PDF** | Extract every page into individual PDF files |
+| **Compress PDF** | Reduce PDF file size while maintaining quality |
 | **Protect PDF** | Lock PDFs with a password |
 | **Rotate PDF** | Rotate all pages 90° clockwise |
 
@@ -30,6 +31,7 @@
 | Tool | Description |
 |------|-------------|
 | **Background Remover** | AI-powered background removal from images (local model, no internet needed) |
+| **Image Resize** | Resize and compress images by percentage or exact dimensions |
 
 ### 📥 Download Tools
 | Tool | Description |

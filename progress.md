@@ -87,3 +87,12 @@ Possible later version:
 - Flask smoke checks for `/` and `/favicon.ico` returned `200`.
 - Page-range parser returned the expected zero-based page indexes for valid input.
 - Full PDF endpoint testing should be repeated in the desktop app because the sandboxed test run had trouble writing temporary PDF files.
+- Completed comprehensive bug verification tests confirming multi-file output formatting and filename preservation.
+- Passed 15/15 tests for conversion functionality.
+
+## Latest Major Overhaul
+
+- **Premium UI**: Implemented dark mode, glassmorphism, animated cards, and responsive sidebar.
+- **UX**: Added toast notifications, keyboard shortcuts (Ctrl+O, Esc), and conversion history log.
+- **New Tools**: Added PDF Compress (pypdf) and Image Resize (Pillow).
+- **Feedback**: Implemented before/after size comparisons for compression tools.
