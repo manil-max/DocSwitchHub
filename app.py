@@ -51,15 +51,41 @@ def convert_with_libreoffice(input_path: str, output_path: str, out_ext: str, in
     if os.path.exists(lo_output_path) and lo_output_path != output_path:
         shutil.move(lo_output_path, output_path)
 
-def convert_pdf_to_docx(input_path: str, output_path: str) -> None:
+def convert_pdf_to_docx(input_path: str, output_path: str, engine: str = "fast") -> None:
+    """Convert a PDF to DOCX.
+
+    engine:
+      - "fast"    -> LibreOffice writer_pdf_import. Very fast, but the
+                     output uses many text frames (one per line/word) and
+                     keeps the original PDF page size/orientation.
+      - "quality" -> pdf2docx. Reconstructs paragraph flow (real editable
+                     text, fewer text boxes) but is significantly slower
+                     and more memory-hungry on large PDFs.
+    Each engine falls back to the other on failure.
+    """
+    if engine == "quality":
+        try:
+            from pdf2docx import Converter
+            cv = Converter(input_path)
+            try:
+                cv.convert(output_path)
+            finally:
+                cv.close()
+            return
+        except Exception:
+            convert_with_libreoffice(input_path, output_path, "docx", "writer_pdf_import")
+            return
+
+    # Default: fast / LibreOffice
     try:
         convert_with_libreoffice(input_path, output_path, "docx", "writer_pdf_import")
-    except Exception as e:
-        # Fallback
+    except Exception:
         from pdf2docx import Converter
         cv = Converter(input_path)
-        cv.convert(output_path)
-        cv.close()
+        try:
+            cv.convert(output_path)
+        finally:
+            cv.close()
 
 def convert_docx_to_pdf(input_path: str, output_path: str) -> None:
     try:
@@ -266,6 +292,7 @@ def process_tool(tool_id):
     arg = request.form.get("arg", "")
     split_mode = request.form.get("split_mode", "pages")
     page_ranges = request.form.get("page_ranges", "")
+    pdf_engine = request.form.get("pdf_engine", "fast")  # "fast" | "quality"
     
     if not files or all(f.filename == "" for f in files):
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -493,7 +520,10 @@ def process_tool(tool_id):
             output_path = os.path.join(tmp_dir, out_name)
 
             try:
-                tool["fn"](input_path, output_path)
+                if tool_id == "pdf_to_word":
+                    tool["fn"](input_path, output_path, engine=pdf_engine)
+                else:
+                    tool["fn"](input_path, output_path)
                 converted_files.append((out_name, output_path))
             except Exception as e:
                 errors.append(f"Failed '{filename}': {str(e)}")

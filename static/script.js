@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const splitOptions = document.getElementById("splitOptions");
   const pageRangesInput = document.getElementById("pageRangesInput");
   const resizeOptions = document.getElementById("resizeOptions");
+  const pdfEngineOptions = document.getElementById("pdfEngineOptions");
 
   const progressSection = document.getElementById("progressSection");
   const progressFill = document.getElementById("progressFill");
@@ -272,6 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (toolArgInput) toolArgInput.value = "";
     if (splitOptions) splitOptions.classList.add("hidden");
     if (resizeOptions) resizeOptions.classList.add("hidden");
+    if (pdfEngineOptions) pdfEngineOptions.classList.add("hidden");
     if (pageRangesInput) {
       pageRangesInput.value = "";
       pageRangesInput.classList.add("hidden");
@@ -308,6 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     showSection(fileList);
     if (splitOptions) splitOptions.classList.toggle("hidden", currentToolId !== "split_pdf");
     if (resizeOptions) resizeOptions.classList.toggle("hidden", currentToolId !== "image_resize");
+    if (pdfEngineOptions) pdfEngineOptions.classList.toggle("hidden", currentToolId !== "pdf_to_word");
     fileCount.textContent = selectedFiles.length;
     fileListItems.innerHTML = "";
 
@@ -518,6 +521,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentToolId === "split_pdf") {
       fd.append("split_mode", getSelectedSplitMode());
       fd.append("page_ranges", pageRangesInput.value.trim());
+    }
+    if (currentToolId === "pdf_to_word") {
+      const engine = document.querySelector('input[name="pdfEngine"]:checked')?.value || "fast";
+      fd.append("pdf_engine", engine);
     }
     if (currentToolId === "image_resize") {
       const mode = document.querySelector('input[name="resizeMode"]:checked')?.value || "percentage";

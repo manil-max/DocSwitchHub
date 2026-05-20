@@ -206,6 +206,25 @@
             <!-- Populated by JS -->
           </div>
 
+          <!-- PDF to Word Engine Options -->
+          <div id="pdfEngineOptions" class="split-options hidden">
+            <div class="split-options__title">Conversion mode</div>
+            <div class="split-options__modes" role="group" aria-label="PDF to Word engine">
+              <label class="split-options__mode">
+                <input type="radio" name="pdfEngine" value="fast" checked />
+                <span>Fast (LibreOffice)</span>
+              </label>
+              <label class="split-options__mode">
+                <input type="radio" name="pdfEngine" value="quality" />
+                <span>Better layout (slower)</span>
+              </label>
+            </div>
+            <p style="margin:0.6rem 0 0; font-size:0.8rem; color:var(--clr-text-dim); line-height:1.4;">
+              <strong>Fast</strong>: quick, but text is split into many small text boxes.<br>
+              <strong>Better layout</strong>: rebuilds paragraphs as normal editable text. Much slower on large PDFs.
+            </p>
+          </div>
+
           <div id="splitOptions" class="split-options hidden">
             <div class="split-options__title">Choose split method</div>
             <div class="split-options__modes" role="group" aria-label="Split mode">
