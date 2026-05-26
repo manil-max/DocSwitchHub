@@ -191,6 +191,10 @@ def parse_positive_int(value: str, default: int, field_name: str, minimum: int =
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 
+HEARTBEAT_TIMEOUT_SECONDS = 45
+_last_client_heartbeat = time.time()
+_shutdown_requested = False
+
 TOOLS = {
     "pdf_to_word": {
         "exts": [".pdf"], "out_ext": ".docx", "fn": convert_pdf_to_docx, "type": "convert"
@@ -241,9 +245,43 @@ def schedule_cleanup(path: str, delay: float = 60.0):
     timer.daemon = True
     timer.start()
 
+def is_local_request() -> bool:
+    return request.remote_addr in ("127.0.0.1", "::1", "localhost")
+
+def schedule_app_exit(delay: float = 0.5) -> None:
+    global _shutdown_requested
+    if _shutdown_requested:
+        return
+    _shutdown_requested = True
+    timer = threading.Timer(delay, lambda: os._exit(0))
+    timer.daemon = True
+    timer.start()
+
+def monitor_client_heartbeat(timeout: float = HEARTBEAT_TIMEOUT_SECONDS) -> None:
+    while not _shutdown_requested:
+        time.sleep(5)
+        if time.time() - _last_client_heartbeat > timeout:
+            schedule_app_exit()
+            return
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/api/heartbeat", methods=["POST"])
+def heartbeat():
+    global _last_client_heartbeat
+    if not is_local_request():
+        return jsonify({"error": "Forbidden"}), 403
+    _last_client_heartbeat = time.time()
+    return ("", 204)
+
+@app.route("/api/shutdown", methods=["POST"])
+def shutdown_app():
+    if not is_local_request():
+        return jsonify({"error": "Forbidden"}), 403
+    schedule_app_exit()
+    return ("", 204)
 
 @app.route("/favicon.ico")
 def favicon():
@@ -734,6 +772,7 @@ if __name__ == "__main__":
     threading.Thread(
         target=open_app_window, args=(url, host, DEFAULT_PORT), daemon=True
     ).start()
+    threading.Thread(target=monitor_client_heartbeat, daemon=True).start()
 
     # debug=False keeps everything in a single process (no Werkzeug reloader),
     # which matters because the reloader would otherwise spawn a child that

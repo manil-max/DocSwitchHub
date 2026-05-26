@@ -5,6 +5,18 @@
  */
 
 document.addEventListener("DOMContentLoaded", () => {
+  const sendAppHeartbeat = () => {
+    fetch("/api/heartbeat", {
+      method: "POST",
+      keepalive: true
+    }).catch(() => {});
+  };
+  sendAppHeartbeat();
+  setInterval(sendAppHeartbeat, 5000);
+  window.addEventListener("pagehide", () => {
+    navigator.sendBeacon("/api/shutdown", new Blob([], { type: "text/plain" }));
+  });
+
   // ─── Elements ──────────────────────────────────────────────
   const dashboardView = document.getElementById("dashboardView");
   const toolView = document.getElementById("toolView");

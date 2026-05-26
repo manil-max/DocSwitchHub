@@ -3,7 +3,7 @@
 ; Includes LibreOffice automatic installation and bundled .exe
 
 #define MyAppName "DocSwitch Hub"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.4"
 #define MyAppPublisher "manil-max"
 #define MyAppURL "https://github.com/manil-max/DocSwitchHub"
 #define MyAppExeName "DocSwitch.exe"
