@@ -174,6 +174,18 @@ def parse_page_ranges(ranges_text: str, page_count: int):
         raise ValueError("Please enter at least one valid page.")
     return pages
 
+def parse_positive_int(value: str, default: int, field_name: str, minimum: int = 0, maximum: int = None) -> int:
+    try:
+        parsed = int(value or default)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field_name} must be a valid number.")
+
+    if parsed < minimum:
+        raise ValueError(f"{field_name} must be at least {minimum}.")
+    if maximum is not None and parsed > maximum:
+        raise ValueError(f"{field_name} must be at most {maximum}.")
+    return parsed
+
 # ---------------------------------------------------------------------------
 # Flask App setup
 # ---------------------------------------------------------------------------
@@ -532,9 +544,17 @@ def process_tool(tool_id):
     # ---------------------------------------------------------
     elif tool["type"] == "image_resize":
         resize_mode = request.form.get("resize_mode", "percentage")
-        resize_pct = int(request.form.get("resize_percent", "50") or 50)
-        resize_w = int(request.form.get("resize_width", "0") or 0)
-        resize_h = int(request.form.get("resize_height", "0") or 0)
+        try:
+            resize_pct = parse_positive_int(request.form.get("resize_percent", "50"), 50, "Resize percentage", 1, 500)
+            resize_w = parse_positive_int(request.form.get("resize_width", "0"), 0, "Resize width", 0)
+            resize_h = parse_positive_int(request.form.get("resize_height", "0"), 0, "Resize height", 0)
+        except ValueError as e:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return jsonify({"error": str(e)}), 400
+
+        if resize_mode == "dimensions" and not (resize_w or resize_h):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return jsonify({"error": "Enter a width, a height, or both."}), 400
 
         for file in files:
             if file.filename == "": continue

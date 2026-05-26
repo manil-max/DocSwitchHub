@@ -38,6 +38,7 @@ DocSwitch.bat
 # Installer output
 installer/AppFiles/
 installer/Output/
+release/
 
 # Release build config
 !build.spec

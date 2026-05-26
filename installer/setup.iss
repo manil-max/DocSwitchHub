@@ -3,7 +3,7 @@
 ; Includes LibreOffice automatic installation and bundled .exe
 
 #define MyAppName "DocSwitch Hub"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "manil-max"
 #define MyAppURL "https://github.com/manil-max/DocSwitchHub"
 #define MyAppExeName "DocSwitch.exe"
@@ -48,9 +48,8 @@ Name: "quicklaunch"; Description: "Add to Quick Launch"; GroupDescription: "{cm:
 Name: "install_libreoffice"; Description: "Download and install LibreOffice (required for conversions)"; GroupDescription: "Dependencies"; Flags: checked
 
 [Files]
-; Bundled PyInstaller executable and data
-Source: "AppFiles\DocSwitch.exe"; DestDir: "{app}"; Flags: ignoreversion; Permissions: everyone-read
-Source: "AppFiles\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+; Bundled PyInstaller executable
+Source: "..\dist\DocSwitch.exe"; DestDir: "{app}"; Flags: ignoreversion; Permissions: everyone-read
 
 ; Documentation
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
